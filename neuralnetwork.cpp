@@ -5,20 +5,6 @@
 
 using namespace std;
 
-vector<vector<double>> transpose(const vector<vector<double>>& matrix) {
-    if (matrix.empty() || matrix[0].empty()) {
-        return {};
-    }
-    vector<vector<double>> transposed(matrix[0].size(), vector<double>(matrix.size()));
-    for (size_t i = 0; i < matrix.size(); ++i) {
-        for (size_t j = 0; j < matrix[0].size(); ++j) {
-            transposed[j][i] = matrix[i][j];
-        }
-    }
-    return transposed;
-}
-
-
 NeuralNetwork::NeuralNetwork(int input, int hidden, int output, double lr){
     inputSize = input;
     hiddenSize = hidden;
@@ -39,7 +25,6 @@ NeuralNetwork::NeuralNetwork(int input, int hidden, int output, double lr){
 
 NeuralNetwork::~NeuralNetwork() {}
 
-// Custom copy constructor
 NeuralNetwork::NeuralNetwork(const NeuralNetwork & other) :
     inputSize(other.inputSize),
     hiddenSize(other.hiddenSize),
@@ -49,11 +34,10 @@ NeuralNetwork::NeuralNetwork(const NeuralNetwork & other) :
     weightsHiddenOutput(other.weightsHiddenOutput),
     biasHidden(other.biasHidden),
     biasOutput(other.biasOutput),
-    randomGenerator(random_device()()), // Re-initialize with a new seed
+    randomGenerator(random_device()()),
     distribution(other.distribution)
 {}
 
-// Custom copy assignment operator
 NeuralNetwork& NeuralNetwork::operator=(const NeuralNetwork & other) {
     if (this != &other) {
         inputSize = other.inputSize;
@@ -64,7 +48,6 @@ NeuralNetwork& NeuralNetwork::operator=(const NeuralNetwork & other) {
         weightsHiddenOutput = other.weightsHiddenOutput;
         biasHidden = other.biasHidden;
         biasOutput = other.biasOutput;
-        // Re-initialize random generator, do not copy
         randomGenerator = mt19937(random_device()());
         distribution = other.distribution;
     }
@@ -86,8 +69,12 @@ void NeuralNetwork::backward(const vector<double>& input, const vector<double>& 
     vector<double> outputError = vectorOperation(actual, predicted, subtract);
     vector<double> outputDelta = vectorOperation(outputError, activationFunction(predicted, sigmoidDerivative), multiply);
     
-    vector<vector<double>> weightsHiddenOutputT = transpose(weightsHiddenOutput);
-    vector<double> hiddenError = dotProduct(outputDelta, weightsHiddenOutputT);
+    std::vector<double> hiddenError(hiddenSize, 0.0);
+    for (int i = 0; i < hiddenSize; ++i) {
+        for (int j = 0; j < outputSize; ++j) {
+            hiddenError[i] += outputDelta[j] * weightsHiddenOutput[i][j];
+        }
+    }
 
     vector<double> hiddenDelta = vectorOperation(hiddenError, activationFunction(hiddenOutput, sigmoidDerivative), multiply);
     
@@ -187,10 +174,6 @@ vector<double> NeuralNetwork::activationFunction(const vector<double> & a, funct
 }
 
 vector<double> NeuralNetwork::dotProduct(const vector<double> & input, const vector<vector<double>> & weights){
-    if (input.empty() || weights.empty() || weights[0].empty() || input.size() != weights.size()) {
-        // Return empty vector or throw an exception for dimension mismatch
-        return {};
-    }
     size_t rows = weights.size();
     size_t cols = weights[0].size();
     vector<double> result(cols, 0.0);
@@ -203,7 +186,7 @@ vector<double> NeuralNetwork::dotProduct(const vector<double> & input, const vec
 }
 
 void NeuralNetwork::fillWeights(vector<vector<double>> & weights, int size1, int size2){
-    weights.assign(size1, vector<double>(size2, 0.0));
+    weights = vector<vector<double>>(size1, vector<double>(size2, 0.0));
     for(int i = 0; i < size1; i++){
         for (int j = 0; j < size2; j++){
             weights[i][j] = distribution(randomGenerator);
@@ -212,12 +195,10 @@ void NeuralNetwork::fillWeights(vector<vector<double>> & weights, int size1, int
 }
 
 int main(){
-    // XOR problem dataset
+    //XOR 
     vector<vector<double>> X_train = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
     vector<vector<double>> y_train = {{0}, {1}, {1}, {0}};
 
-    // Create a neural network for the XOR problem
-    // 2 input neurons, 3 hidden neurons, 1 output neuron, learning rate 0.1
     NeuralNetwork nn(2, 500, 1, 0.1);
 
     cout << "Training the neural network for the XOR problem..." << endl;
